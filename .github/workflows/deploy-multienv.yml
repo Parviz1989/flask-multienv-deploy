@@ -1,0 +1,36 @@
+name: Multi-Environment Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - staging
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || github.ref_name == 'staging' && 'staging' || 'development' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ github.ref_name == 'main' && secrets.PROD_WEBAPP_NAME || github.ref_name == 'staging' && secrets.STAGING_WEBAPP_NAME || secrets.DEV_WEBAPP_NAME }}
+          publish-profile: ${{ github.ref_name == 'main' && secrets.PROD_PUBLISH_PROFILE || github.ref_name == 'staging' && secrets.STAGING_PUBLISH_PROFILE || secrets.DEV_PUBLISH_PROFILE }}
+          package: .
